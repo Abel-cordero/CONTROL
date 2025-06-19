@@ -6,7 +6,7 @@
 <title>Control de Avance de Proyectos</title>
 <style>
     body {
-        font-family: Arial, sans-serif;
+        font-family: 'Segoe UI', Tahoma, sans-serif;
         margin: 0;
         padding: 20px;
         background-color: #f4f4f4;
@@ -73,6 +73,7 @@
     table {
         width: 100%;
         border-collapse: collapse;
+        font-size: 14px;
     }
     th, td {
         border: 1px solid #ddd;
@@ -80,7 +81,7 @@
         text-align: left;
     }
     th {
-        background-color: #f2f2f2;
+        background-color: #e9ecef;
     }
     .estado-completado { color: green; }
     .estado-retrasado { color: red; }
@@ -158,6 +159,11 @@
         <tbody>
         </tbody>
     </table>
+    <div style="margin-top:10px; text-align:right;">
+        <button type="button" id="guardar-datos">Guardar</button>
+        <button type="button" id="export-excel">Exportar Excel</button>
+        <button type="button" id="export-pdf">Exportar PDF</button>
+    </div>
     <canvas id="grafico-avances" width="800" height="300" style="margin-top:20px;"></canvas>
 </div>
 <script>
@@ -170,6 +176,9 @@ const btnAgregarUsuario = document.getElementById('agregar-usuario');
 const btnEditarUsuarios = document.getElementById('editar-usuarios');
 const canvas = document.getElementById('grafico-avances');
 const ctx = canvas.getContext('2d');
+const btnGuardar = document.getElementById('guardar-datos');
+const btnExcel = document.getElementById('export-excel');
+const btnPDF = document.getElementById('export-pdf');
 
 let usuarios = ['Usuario 1', 'Usuario 2'];
 let etiquetas = [];
@@ -191,6 +200,11 @@ form.addEventListener('submit', function(e) {
 filtroEstado.addEventListener('change', aplicarFiltro);
 btnAgregarUsuario.addEventListener('click', agregarUsuario);
 btnEditarUsuarios.addEventListener('click', editarUsuarios);
+btnGuardar.addEventListener('click', guardarDatos);
+btnExcel.addEventListener('click', exportarExcel);
+btnPDF.addEventListener('click', exportarPDF);
+
+cargarDatos();
 
 function agregarActividad() {
     const actividad = document.getElementById('actividad').value.trim();
@@ -218,12 +232,14 @@ function agregarActividad() {
     const duracion = Math.floor((new Date(fechaFin) - new Date(fechaInicio)) / (1000*60*60));
     const estado = calcularEstado(avanceReal, fechaInicio, fechaFin);
 
+    const fi = formatearFecha(fechaInicio);
+    const ff = formatearFecha(fechaFin);
     const fila = document.createElement('tr');
     fila.innerHTML = `<td>${contadorId}</td>
         <td>${actividad}</td>
         <td>${responsable}</td>
-        <td>${fechaInicio}</td>
-        <td>${fechaFin}</td>
+        <td data-raw="${fechaInicio}">${fi}</td>
+        <td data-raw="${fechaFin}">${ff}</td>
         <td>${duracion}</td>
         <td>${avanceReal}%</td>
         <td>${avancePlan}%</td>
@@ -242,6 +258,7 @@ function agregarActividad() {
     avancesReales.push(avanceReal);
     avancesPlanificados.push(avancePlan);
     dibujarGrafico();
+    guardarDatos();
 }
 
 function editarActividad(fila) {
@@ -249,8 +266,8 @@ function editarActividad(fila) {
     const c = fila.children;
     document.getElementById('actividad').value = c[1].textContent;
     document.getElementById('responsable').value = c[2].textContent;
-    document.getElementById('fecha-inicio').value = c[3].textContent;
-    document.getElementById('fecha-fin').value = c[4].textContent;
+    document.getElementById('fecha-inicio').value = c[3].getAttribute('data-raw');
+    document.getElementById('fecha-fin').value = c[4].getAttribute('data-raw');
     document.getElementById('avance-real').value = parseInt(c[6].textContent);
     document.getElementById('avance-planificado').value = parseInt(c[7].textContent);
     document.getElementById('observaciones').value = c[9].textContent;
@@ -286,8 +303,12 @@ function actualizarActividad() {
     const c = filaEditando.children;
     c[1].textContent = actividad;
     c[2].textContent = responsable;
-    c[3].textContent = fechaInicio;
-    c[4].textContent = fechaFin;
+    const fi = formatearFecha(fechaInicio);
+    const ff = formatearFecha(fechaFin);
+    c[3].setAttribute('data-raw', fechaInicio);
+    c[3].textContent = fi;
+    c[4].setAttribute('data-raw', fechaFin);
+    c[4].textContent = ff;
     c[5].textContent = duracion;
     c[6].textContent = avanceReal + '%';
     c[7].textContent = avancePlan + '%';
@@ -305,6 +326,7 @@ function actualizarActividad() {
     form.reset();
     aplicarFiltro();
     dibujarGrafico();
+    guardarDatos();
 }
 
 function calcularEstado(avanceReal, fechaInicio, fechaFin) {
@@ -394,6 +416,94 @@ function editarUsuarios() {
             cargarUsuarios();
         }
     }
+}
+
+function formatearFecha(valor) {
+    const fecha = new Date(valor);
+    const dia = ('0' + fecha.getDate()).slice(-2);
+    const mes = fecha.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+    return `${dia}${mes}`;
+}
+
+function guardarDatos() {
+    const actividades = [];
+    cuerpoTabla.querySelectorAll('tr').forEach(fila => {
+        const c = fila.children;
+        actividades.push({
+            id: c[0].textContent,
+            actividad: c[1].textContent,
+            responsable: c[2].textContent,
+            fechaInicio: c[3].getAttribute('data-raw'),
+            fechaFin: c[4].getAttribute('data-raw'),
+            duracion: c[5].textContent,
+            avanceReal: parseInt(c[6].textContent),
+            avancePlan: parseInt(c[7].textContent),
+            estado: c[8].textContent,
+            observaciones: c[9].textContent
+        });
+    });
+    localStorage.setItem('actividades', JSON.stringify(actividades));
+    localStorage.setItem('usuarios', JSON.stringify(usuarios));
+    localStorage.setItem('contadorId', contadorId.toString());
+    alert('Datos guardados');
+}
+
+function cargarDatos() {
+    const data = JSON.parse(localStorage.getItem('actividades') || '[]');
+    usuarios = JSON.parse(localStorage.getItem('usuarios') || '["Usuario 1","Usuario 2"]');
+    contadorId = parseInt(localStorage.getItem('contadorId') || '1');
+    cargarUsuarios();
+    data.forEach(act => {
+        const fila = document.createElement('tr');
+        const fi = formatearFecha(act.fechaInicio);
+        const ff = formatearFecha(act.fechaFin);
+        fila.innerHTML = `<td>${act.id}</td>
+            <td>${act.actividad}</td>
+            <td>${act.responsable}</td>
+            <td data-raw="${act.fechaInicio}">${fi}</td>
+            <td data-raw="${act.fechaFin}">${ff}</td>
+            <td>${act.duracion}</td>
+            <td>${act.avanceReal}%</td>
+            <td>${act.avancePlan}%</td>
+            <td class="estado">${act.estado}</td>
+            <td>${act.observaciones}</td>
+            <td><button type="button" class="editar-btn">Editar</button></td>`;
+        fila.querySelector('.estado').classList.add('estado-' + act.estado.toLowerCase().replace(' ', '-'));
+        fila.querySelector('.editar-btn').addEventListener('click', () => editarActividad(fila));
+        cuerpoTabla.appendChild(fila);
+        etiquetas.push(act.actividad || `Act ${act.id}`);
+        avancesReales.push(act.avanceReal);
+        avancesPlanificados.push(act.avancePlan);
+    });
+    aplicarFiltro();
+    dibujarGrafico();
+}
+
+function exportarExcel() {
+    let csv = '';
+    const filas = document.querySelectorAll('#tabla-actividades tr');
+    filas.forEach(fila => {
+        const cols = Array.from(fila.children).slice(0, -1); // sin acciones
+        const datos = cols.map(c => c.textContent.replace(/\n/g, ' ').trim());
+        csv += datos.join(',') + '\n';
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'reporte.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function exportarPDF() {
+    const ventana = window.open('', '_blank');
+    const tabla = document.getElementById('tabla-actividades').outerHTML;
+    ventana.document.write(`<!DOCTYPE html><html><head><title>Reporte</title></head><body>${tabla}</body></html>`);
+    ventana.document.close();
+    ventana.focus();
+    ventana.print();
+    ventana.close();
 }
 
 function dibujarGrafico() {
