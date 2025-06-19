@@ -38,6 +38,7 @@ To get started with the Task Progress App, follow these steps:
 ## Usage
 - Fill in the input fields with the relevant task information.
 - Click the button to add the task to the list.
+- Each task in the list now includes an **Eliminar** button for removing it.
 - The application will calculate the progress and update the status accordingly.
 
 ## Contributing

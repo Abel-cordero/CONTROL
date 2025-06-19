@@ -56,6 +56,13 @@
     .editar-btn:hover {
         background-color: #e0a800;
     }
+    .eliminar-btn {
+        background-color: #dc3545;
+        margin-left: 5px;
+    }
+    .eliminar-btn:hover {
+        background-color: #c82333;
+    }
     #agregar-usuario {
         background-color: #007bff;
         margin-left: 5px;
@@ -245,9 +252,11 @@ function agregarActividad() {
         <td>${avancePlan}%</td>
         <td class="estado">${estado}</td>
         <td>${observaciones}</td>
-        <td><button type="button" class="editar-btn">Editar</button></td>`;
+        <td><button type="button" class="editar-btn">Editar</button><button type="button" class="eliminar-btn">Eliminar</button></td>`;
     const btnEdit = fila.querySelector('.editar-btn');
+    const btnDel = fila.querySelector('.eliminar-btn');
     btnEdit.addEventListener('click', () => editarActividad(fila));
+    btnDel.addEventListener('click', () => eliminarActividad(fila));
     fila.querySelector('.estado').classList.add('estado-' + estado.toLowerCase().replace(' ', '-'));
 
     cuerpoTabla.appendChild(fila);
@@ -324,6 +333,20 @@ function actualizarActividad() {
     filaEditando = null;
     form.querySelector('button[type="submit"]').textContent = 'Agregar actividad';
     form.reset();
+    aplicarFiltro();
+    dibujarGrafico();
+    guardarDatos();
+}
+
+function eliminarActividad(fila) {
+    if (!confirm('¿Desea eliminar esta actividad?')) {
+        return;
+    }
+    const idx = fila.rowIndex - 1;
+    fila.remove();
+    etiquetas.splice(idx, 1);
+    avancesReales.splice(idx, 1);
+    avancesPlanificados.splice(idx, 1);
     aplicarFiltro();
     dibujarGrafico();
     guardarDatos();
@@ -467,9 +490,10 @@ function cargarDatos() {
             <td>${act.avancePlan}%</td>
             <td class="estado">${act.estado}</td>
             <td>${act.observaciones}</td>
-            <td><button type="button" class="editar-btn">Editar</button></td>`;
+            <td><button type="button" class="editar-btn">Editar</button><button type="button" class="eliminar-btn">Eliminar</button></td>`;
         fila.querySelector('.estado').classList.add('estado-' + act.estado.toLowerCase().replace(' ', '-'));
         fila.querySelector('.editar-btn').addEventListener('click', () => editarActividad(fila));
+        fila.querySelector('.eliminar-btn').addEventListener('click', () => eliminarActividad(fila));
         cuerpoTabla.appendChild(fila);
         etiquetas.push(act.actividad || `Act ${act.id}`);
         avancesReales.push(act.avanceReal);

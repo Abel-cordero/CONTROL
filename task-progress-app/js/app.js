@@ -8,15 +8,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function addTask() {
-        const responsible = document.getElementById('responsible').value;
-        const activity = document.getElementById('activity').value;
-        const startDate = document.getElementById('start-date').value;
-        const endDate = document.getElementById('end-date').value;
-        const duration = document.getElementById('duration').value;
-        const progress = document.getElementById('progress').value;
-        const planned = document.getElementById('planned').value;
+        const responsible = document.getElementById('responsable').value;
+        const activity = document.getElementById('actividad').value;
+        const startDate = document.getElementById('inicio').value;
+        const endDate = document.getElementById('fin').value;
+        const duration = document.getElementById('duracion').value;
+        const progress = document.getElementById('avance').value;
+        const planned = document.getElementById('planificado').value;
         const status = calculateStatus(progress, planned);
-        const observations = document.getElementById('observations').value;
+        const observations = document.getElementById('observaciones').value;
 
         const taskItem = document.createElement('li');
         taskItem.innerHTML = `
@@ -29,8 +29,13 @@ document.addEventListener('DOMContentLoaded', function() {
             <strong>% Planificado:</strong> ${planned} <br>
             <strong>Estado:</strong> ${status} <br>
             <strong>Observaciones:</strong> ${observations} <br>
+            <button type="button" class="delete-btn">Eliminar</button>
             <hr>
         `;
+
+        taskItem.querySelector('.delete-btn').addEventListener('click', () => {
+            taskItem.remove();
+        });
 
         taskList.appendChild(taskItem);
         taskForm.reset();
