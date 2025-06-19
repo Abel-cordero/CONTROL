@@ -49,6 +49,13 @@
     button:hover {
         background-color: #218838;
     }
+    .editar-btn {
+        background-color: #ffc107;
+        margin-left: 5px;
+    }
+    .editar-btn:hover {
+        background-color: #e0a800;
+    }
     #agregar-usuario {
         background-color: #007bff;
         margin-left: 5px;
@@ -68,6 +75,10 @@
     th {
         background-color: #f2f2f2;
     }
+    .estado-completado { color: green; }
+    .estado-retrasado { color: red; }
+    .estado-en-proceso { color: orange; }
+    .estado-pendiente { color: gray; }
     .filtros {
         margin-bottom: 10px;
     }
@@ -87,12 +98,12 @@
             <button type="button" id="agregar-usuario">Agregar usuario</button>
         </div>
         <div>
-            <label for="fecha-inicio">Fecha Inicio</label>
-            <input type="date" id="fecha-inicio" required>
+            <label for="fecha-inicio">Inicio</label>
+            <input type="datetime-local" id="fecha-inicio" required>
         </div>
         <div>
-            <label for="fecha-fin">Fecha Fin</label>
-            <input type="date" id="fecha-fin" required>
+            <label for="fecha-fin">Fin</label>
+            <input type="datetime-local" id="fecha-fin" required>
         </div>
         <div>
             <label for="avance-real">% Avance Real</label>
@@ -100,7 +111,7 @@
         </div>
         <div>
             <label for="avance-planificado">% Avance Planificado</label>
-            <input type="number" id="avance-planificado" min="0" max="100" required>
+            <input type="number" id="avance-planificado" min="0" max="100" readonly>
         </div>
         <div style="grid-column: 1 / -1;">
             <label for="observaciones">Observaciones</label>
@@ -128,11 +139,12 @@
                 <th>Responsable</th>
                 <th>Fecha Inicio</th>
                 <th>Fecha Fin</th>
-                <th>Duración (días)</th>
+                <th>Duración (h)</th>
                 <th>% Avance Real</th>
                 <th>% Avance Planificado</th>
                 <th>Estado</th>
                 <th>Observaciones</th>
+                <th>Acciones</th>
             </tr>
         </thead>
         <tbody>
@@ -154,12 +166,17 @@ let usuarios = ['Usuario 1', 'Usuario 2'];
 let etiquetas = [];
 let avancesReales = [];
 let avancesPlanificados = [];
+let filaEditando = null;
 
 cargarUsuarios();
 
 form.addEventListener('submit', function(e) {
     e.preventDefault();
-    agregarActividad();
+    if (filaEditando) {
+        actualizarActividad();
+    } else {
+        agregarActividad();
+    }
 });
 
 filtroEstado.addEventListener('change', aplicarFiltro);
@@ -171,10 +188,11 @@ function agregarActividad() {
     const fechaInicio = document.getElementById('fecha-inicio').value;
     const fechaFin = document.getElementById('fecha-fin').value;
     const avanceReal = parseInt(document.getElementById('avance-real').value, 10);
-    const avancePlan = parseInt(document.getElementById('avance-planificado').value, 10);
+    const avancePlan = calcularAvancePlanificado(fechaInicio, fechaFin);
+    document.getElementById('avance-planificado').value = avancePlan;
     const observaciones = document.getElementById('observaciones').value.trim();
 
-    if (!actividad || !responsable || !fechaInicio || !fechaFin || isNaN(avanceReal) || isNaN(avancePlan)) {
+    if (!actividad || !responsable || !fechaInicio || !fechaFin || isNaN(avanceReal)) {
         alert('Por favor complete todos los campos obligatorios.');
         return;
     }
@@ -182,12 +200,12 @@ function agregarActividad() {
         alert('La fecha de fin no puede ser menor que la fecha de inicio.');
         return;
     }
-    if (avanceReal < 0 || avanceReal > 100 || avancePlan < 0 || avancePlan > 100) {
+    if (avanceReal < 0 || avanceReal > 100) {
         alert('Los porcentajes de avance deben estar entre 0 y 100.');
         return;
     }
 
-    const duracion = Math.floor((new Date(fechaFin) - new Date(fechaInicio)) / (1000*60*60*24)) + 1;
+    const duracion = Math.floor((new Date(fechaFin) - new Date(fechaInicio)) / (1000*60*60));
     const estado = calcularEstado(avanceReal, fechaInicio, fechaFin);
 
     const fila = document.createElement('tr');
@@ -200,7 +218,11 @@ function agregarActividad() {
         <td>${avanceReal}%</td>
         <td>${avancePlan}%</td>
         <td class="estado">${estado}</td>
-        <td>${observaciones}</td>`;
+        <td>${observaciones}</td>
+        <td><button type="button" class="editar-btn">Editar</button></td>`;
+    const btnEdit = fila.querySelector('.editar-btn');
+    btnEdit.addEventListener('click', () => editarActividad(fila));
+    fila.querySelector('.estado').classList.add('estado-' + estado.toLowerCase().replace(' ', '-'));
 
     cuerpoTabla.appendChild(fila);
     contadorId++;
@@ -209,6 +231,69 @@ function agregarActividad() {
     etiquetas.push(actividad || `Act ${contadorId}`);
     avancesReales.push(avanceReal);
     avancesPlanificados.push(avancePlan);
+    dibujarGrafico();
+}
+
+function editarActividad(fila) {
+    filaEditando = fila;
+    const c = fila.children;
+    document.getElementById('actividad').value = c[1].textContent;
+    document.getElementById('responsable').value = c[2].textContent;
+    document.getElementById('fecha-inicio').value = c[3].textContent;
+    document.getElementById('fecha-fin').value = c[4].textContent;
+    document.getElementById('avance-real').value = parseInt(c[6].textContent);
+    document.getElementById('avance-planificado').value = parseInt(c[7].textContent);
+    document.getElementById('observaciones').value = c[9].textContent;
+    form.querySelector('button[type="submit"]').textContent = 'Guardar cambios';
+}
+
+function actualizarActividad() {
+    const actividad = document.getElementById('actividad').value.trim();
+    const responsable = document.getElementById('responsable').value.trim();
+    const fechaInicio = document.getElementById('fecha-inicio').value;
+    const fechaFin = document.getElementById('fecha-fin').value;
+    const avanceReal = parseInt(document.getElementById('avance-real').value, 10);
+    const avancePlan = calcularAvancePlanificado(fechaInicio, fechaFin);
+    document.getElementById('avance-planificado').value = avancePlan;
+    const observaciones = document.getElementById('observaciones').value.trim();
+
+    if (!actividad || !responsable || !fechaInicio || !fechaFin || isNaN(avanceReal)) {
+        alert('Por favor complete todos los campos obligatorios.');
+        return;
+    }
+    if (new Date(fechaFin) < new Date(fechaInicio)) {
+        alert('La fecha de fin no puede ser menor que la fecha de inicio.');
+        return;
+    }
+    if (avanceReal < 0 || avanceReal > 100) {
+        alert('Los porcentajes de avance deben estar entre 0 y 100.');
+        return;
+    }
+
+    const duracion = Math.floor((new Date(fechaFin) - new Date(fechaInicio)) / (1000*60*60));
+    const estado = calcularEstado(avanceReal, fechaInicio, fechaFin);
+
+    const c = filaEditando.children;
+    c[1].textContent = actividad;
+    c[2].textContent = responsable;
+    c[3].textContent = fechaInicio;
+    c[4].textContent = fechaFin;
+    c[5].textContent = duracion;
+    c[6].textContent = avanceReal + '%';
+    c[7].textContent = avancePlan + '%';
+    c[8].textContent = estado;
+    c[8].className = 'estado estado-' + estado.toLowerCase().replace(' ', '-');
+    c[9].textContent = observaciones;
+
+    const idx = filaEditando.rowIndex - 1;
+    etiquetas[idx] = actividad;
+    avancesReales[idx] = avanceReal;
+    avancesPlanificados[idx] = avancePlan;
+
+    filaEditando = null;
+    form.querySelector('button[type="submit"]').textContent = 'Agregar actividad';
+    form.reset();
+    aplicarFiltro();
     dibujarGrafico();
 }
 
@@ -230,6 +315,16 @@ function calcularEstado(avanceReal, fechaInicio, fechaFin) {
         return 'En proceso';
     }
     return 'Pendiente';
+}
+
+function calcularAvancePlanificado(fechaInicio, fechaFin) {
+    const inicio = new Date(fechaInicio);
+    const fin = new Date(fechaFin);
+    const total = fin - inicio;
+    if (total <= 0) return 0;
+    const ahora = new Date();
+    const transcurrido = Math.min(Math.max(ahora - inicio, 0), total);
+    return Math.round((transcurrido / total) * 100);
 }
 
 function aplicarFiltro() {
