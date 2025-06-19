@@ -63,6 +63,13 @@
     #agregar-usuario:hover {
         background-color: #0069d9;
     }
+    #editar-usuarios {
+        background-color: #17a2b8;
+        margin-left: 5px;
+    }
+    #editar-usuarios:hover {
+        background-color: #138496;
+    }
     table {
         width: 100%;
         border-collapse: collapse;
@@ -96,6 +103,7 @@
             <label for="responsable">Responsable</label>
             <select id="responsable"></select>
             <button type="button" id="agregar-usuario">Agregar usuario</button>
+            <button type="button" id="editar-usuarios">Editar usuarios</button>
         </div>
         <div>
             <label for="fecha-inicio">Inicio</label>
@@ -159,6 +167,7 @@ const cuerpoTabla = document.querySelector('#tabla-actividades tbody');
 const filtroEstado = document.getElementById('filtro-estado');
 const selectResponsable = document.getElementById('responsable');
 const btnAgregarUsuario = document.getElementById('agregar-usuario');
+const btnEditarUsuarios = document.getElementById('editar-usuarios');
 const canvas = document.getElementById('grafico-avances');
 const ctx = canvas.getContext('2d');
 
@@ -181,6 +190,7 @@ form.addEventListener('submit', function(e) {
 
 filtroEstado.addEventListener('change', aplicarFiltro);
 btnAgregarUsuario.addEventListener('click', agregarUsuario);
+btnEditarUsuarios.addEventListener('click', editarUsuarios);
 
 function agregarActividad() {
     const actividad = document.getElementById('actividad').value.trim();
@@ -355,6 +365,34 @@ function agregarUsuario() {
     if (nombre) {
         usuarios.push(nombre.trim());
         cargarUsuarios();
+    }
+}
+
+function editarUsuarios() {
+    if (usuarios.length === 0) {
+        alert('No hay usuarios para editar.');
+        return;
+    }
+    const lista = usuarios.map((u, i) => `${i + 1}. ${u}`).join('\n');
+    let idx = prompt(`Usuarios actuales:\n${lista}\nIngrese el n\u00FAmero del usuario:`);
+    if (idx === null) return;
+    idx = parseInt(idx, 10) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= usuarios.length) {
+        alert('Selecci\u00F3n inv\u00E1lida');
+        return;
+    }
+    const accion = prompt('Escriba "1" para cambiar el nombre o "2" para eliminarlo:');
+    if (accion === '1') {
+        const nuevo = prompt('Nuevo nombre:', usuarios[idx]);
+        if (nuevo) {
+            usuarios[idx] = nuevo.trim();
+            cargarUsuarios();
+        }
+    } else if (accion === '2') {
+        if (confirm(`\u00BFEliminar usuario "${usuarios[idx]}"?`)) {
+            usuarios.splice(idx, 1);
+            cargarUsuarios();
+        }
     }
 }
 
