@@ -49,6 +49,13 @@
     button:hover {
         background-color: #218838;
     }
+    #agregar-usuario {
+        background-color: #007bff;
+        margin-left: 5px;
+    }
+    #agregar-usuario:hover {
+        background-color: #0069d9;
+    }
     table {
         width: 100%;
         border-collapse: collapse;
@@ -76,7 +83,8 @@
         </div>
         <div>
             <label for="responsable">Responsable</label>
-            <input type="text" id="responsable" required>
+            <select id="responsable"></select>
+            <button type="button" id="agregar-usuario">Agregar usuario</button>
         </div>
         <div>
             <label for="fecha-inicio">Fecha Inicio</label>
@@ -130,12 +138,24 @@
         <tbody>
         </tbody>
     </table>
+    <canvas id="grafico-avances" width="800" height="300" style="margin-top:20px;"></canvas>
 </div>
 <script>
 let contadorId = 1;
 const form = document.getElementById('actividad-form');
 const cuerpoTabla = document.querySelector('#tabla-actividades tbody');
 const filtroEstado = document.getElementById('filtro-estado');
+const selectResponsable = document.getElementById('responsable');
+const btnAgregarUsuario = document.getElementById('agregar-usuario');
+const canvas = document.getElementById('grafico-avances');
+const ctx = canvas.getContext('2d');
+
+let usuarios = ['Usuario 1', 'Usuario 2'];
+let etiquetas = [];
+let avancesReales = [];
+let avancesPlanificados = [];
+
+cargarUsuarios();
 
 form.addEventListener('submit', function(e) {
     e.preventDefault();
@@ -143,6 +163,7 @@ form.addEventListener('submit', function(e) {
 });
 
 filtroEstado.addEventListener('change', aplicarFiltro);
+btnAgregarUsuario.addEventListener('click', agregarUsuario);
 
 function agregarActividad() {
     const actividad = document.getElementById('actividad').value.trim();
@@ -185,6 +206,10 @@ function agregarActividad() {
     contadorId++;
     form.reset();
     aplicarFiltro();
+    etiquetas.push(actividad || `Act ${contadorId}`);
+    avancesReales.push(avanceReal);
+    avancesPlanificados.push(avancePlan);
+    dibujarGrafico();
 }
 
 function calcularEstado(avanceReal, fechaInicio, fechaFin) {
@@ -218,6 +243,60 @@ function aplicarFiltro() {
             fila.style.display = 'none';
         }
     });
+}
+
+function cargarUsuarios() {
+    selectResponsable.innerHTML = '';
+    usuarios.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u;
+        opt.textContent = u;
+        selectResponsable.appendChild(opt);
+    });
+}
+
+function agregarUsuario() {
+    const nombre = prompt('Nombre del usuario:');
+    if (nombre) {
+        usuarios.push(nombre.trim());
+        cargarUsuarios();
+    }
+}
+
+function dibujarGrafico() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const baseY = canvas.height - 30;
+    const maxBarHeight = canvas.height - 60;
+    const barWidth = 20;
+    const groupWidth = 50;
+    etiquetas.forEach((label, i) => {
+        const x = 40 + i * groupWidth;
+        const realH = (avancesReales[i] / 100) * maxBarHeight;
+        const planH = (avancesPlanificados[i] / 100) * maxBarHeight;
+        ctx.fillStyle = '#28a745';
+        ctx.fillRect(x, baseY - realH, barWidth, realH);
+        ctx.fillStyle = '#007bff';
+        ctx.fillRect(x + barWidth + 5, baseY - planH, barWidth, planH);
+        ctx.fillStyle = '#000';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, x + barWidth, baseY + 15);
+    });
+    // ejes
+    ctx.strokeStyle = '#000';
+    ctx.beginPath();
+    ctx.moveTo(30, 10);
+    ctx.lineTo(30, baseY);
+    ctx.lineTo(canvas.width - 10, baseY);
+    ctx.stroke();
+    // leyenda
+    ctx.fillStyle = '#28a745';
+    ctx.fillRect(canvas.width - 110, 10, 10, 10);
+    ctx.fillStyle = '#000';
+    ctx.fillText('Real', canvas.width - 90, 20);
+    ctx.fillStyle = '#007bff';
+    ctx.fillRect(canvas.width - 110, 30, 10, 10);
+    ctx.fillStyle = '#000';
+    ctx.fillText('Plan', canvas.width - 90, 40);
 }
 </script>
 </body>
